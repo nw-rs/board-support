@@ -3,19 +3,22 @@
 use cortex_m::peripheral::MPU;
 use display::Display;
 use hal::{
+    flash::Flash,
     fmc_lcd::{ChipSelect1, LcdPins},
     gpio::{
         gpiob::{PB0, PB4, PB5},
         GpioExt, Output, PushPull,
     },
+    otg_fs::UsbBus,
     pac,
-    rcc::Clocks, otg_fs::UsbBus, flash::Flash, timer::SysTimerExt,
+    rcc::Clocks,
+    timer::SysTimerExt,
 };
 use keypad::{KeyMatrix, KeyPad};
 use led::Led;
 
-pub use stm32f7xx_hal as hal;
 pub use clocks::init_clocks;
+pub use stm32f7xx_hal as hal;
 
 pub mod clocks;
 pub mod display;
@@ -98,7 +101,9 @@ pub fn get_keypad() -> KeyPad {
     KeyPad::new(keymatrix)
 }
 
-pub fn get_led() -> Led<PB4<Output<PushPull>>, PB5<Output<PushPull>>, PB0<Output<PushPull>>> {
+pub type TopLed = Led<PB4<Output<PushPull>>, PB5<Output<PushPull>>, PB0<Output<PushPull>>>;
+
+pub fn get_led() -> TopLed {
     let dp = unsafe { pac::Peripherals::steal() };
 
     let gpiob = dp.GPIOB.split();
@@ -110,7 +115,10 @@ pub fn get_led() -> Led<PB4<Output<PushPull>>, PB5<Output<PushPull>>, PB0<Output
     )
 }
 
-pub fn get_usb_bus_allocator(clocks: &Clocks, ep_memory: &'static mut [u32]) -> UsbBusAllocator<UsbBus<USB>> {
+pub fn get_usb_bus_allocator(
+    clocks: &Clocks,
+    ep_memory: &'static mut [u32],
+) -> UsbBusAllocator<UsbBus<USB>> {
     let dp = unsafe { pac::Peripherals::steal() };
 
     let gpioa = dp.GPIOA.split();
@@ -119,10 +127,7 @@ pub fn get_usb_bus_allocator(clocks: &Clocks, ep_memory: &'static mut [u32]) -> 
         dp.OTG_FS_GLOBAL,
         dp.OTG_FS_DEVICE,
         dp.OTG_FS_PWRCLK,
-        (
-            gpioa.pa11.into_alternate(),
-            gpioa.pa12.into_alternate(),
-        ),
+        (gpioa.pa11.into_alternate(), gpioa.pa12.into_alternate()),
         clocks,
     );
 
@@ -137,7 +142,7 @@ pub fn init_mpu() {
         const DEVICE_SHARED: u32 = 0b000001 << 16;
         const NORMAL_SHARED: u32 = 0b000110 << 16;
 
-        let mpu = &*MPU::ptr();
+        let mpu = &*MPU::PTR;
 
         // Flash
         mpu.rnr.write(0);

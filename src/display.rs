@@ -4,8 +4,10 @@ use core::fmt::Arguments;
 use core::fmt::Write;
 
 use heapless::String;
-use st7789::Orientation;
-use st7789::ST7789;
+use mipidsi::models::ST7789;
+use mipidsi::Display as MipiDsiDisplay;
+use mipidsi::DisplayOptions;
+use mipidsi::Orientation;
 
 use stm32f7xx_hal::fmc_lcd::{AccessMode, ChipSelect1, FmcLcd, Lcd, SubBank1, Timing};
 use stm32f7xx_hal::gpio::gpiob::PB11;
@@ -67,11 +69,9 @@ pub type LcdExtdCmdPin = PD6<Output<PushPull>>;
 pub type LcdBacklightPin = PE0<Output<PushPull>>;
 pub type LcdTearingEffectPin = PB11<Input<Floating>>;
 
-pub type LcdST7789 = ST7789<Lcd<SubBank1>, LcdResetPin>;
-
 pub type Color = Rgb565;
 
-pub type DrawError = <LcdST7789 as DrawTarget>::Error;
+pub type LcdST7789 = MipiDsiDisplay<Lcd<SubBank1>, LcdResetPin, ST7789>;
 
 pub struct Display {
     pub display: LcdST7789,
@@ -148,13 +148,14 @@ impl Display {
         reset_pin.set_high();
         delay.delay_us(10000u32);
 
-        let mut display = ST7789::new(lcd, reset_pin, DISPLAY_WIDTH, DISPLAY_HEIGHT);
+        let mut display = MipiDsiDisplay::st7789(lcd, reset_pin);
 
-        display.init(delay).unwrap();
+        let display_options = DisplayOptions {
+            orientation: Orientation::LandscapeInverted(false),
+            ..Default::default()
+        };
 
-        display
-            .set_orientation(Orientation::LandscapeSwapped)
-            .unwrap();
+        display.init(delay, display_options).unwrap();
 
         display.clear(Rgb565::BLACK).unwrap();
 
