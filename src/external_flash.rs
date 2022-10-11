@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use cortex_m::asm;
+use cortex_m_semihosting::hprintln;
 use stm32f7xx_hal::pac::{GPIOB, GPIOC, GPIOD, GPIOE};
 use stm32f7xx_hal::{pac::QUADSPI, pac::RCC};
 
@@ -123,9 +124,12 @@ pub enum Command {
 /// Initialize flash chip and QSPI peripheral.
 pub fn init() {
     unsafe {
+        hprintln!("gpio init.");
         init_gpio();
+        hprintln!("qspi init.");
         init_qspi();
     }
+    hprintln!("chip init.");
     init_chip();
 }
 
@@ -304,15 +308,17 @@ fn send_command_full(
     read: Option<&mut [u8]>,
     data_length: usize,
 ) {
-    let qspi = unsafe { &(*QUADSPI::ptr()) };
+    let qspi = unsafe { &(*QUADSPI::PTR) };
 
-    let previous_mode = qspi.ccr.read().fmode().bits();
+    //hprintln!("mode: {:08b}, prev_mode: {:08b}", mode as u8, qspi.ccr.read().fmode().bits());
 
     if mode == QspiMode::MemoryMapped {
+	let previous_mode = qspi.ccr.read().fmode().bits();
+
         if previous_mode == QspiMode::IndirectWrite as u8
             || previous_mode == QspiMode::IndirectRead as u8
         {
-            qspi.ar.reset();
+            qspi.ar.write(|w| unsafe { w.bits(0) } );
             if previous_mode == QspiMode::IndirectRead as u8 {
                 qspi.cr.modify(|_, w| w.abort().set_bit());
                 while qspi.cr.read().abort().bit_is_set() {
@@ -320,7 +326,7 @@ fn send_command_full(
                 }
             }
         }
-    } else if previous_mode == QspiMode::MemoryMapped as u8 {
+    } else if qspi.ccr.read().fmode().bits() == QspiMode::MemoryMapped as u8 {
         qspi.cr.modify(|_, w| w.abort().set_bit());
         while qspi.cr.read().abort().bit_is_set() {
             cortex_m::asm::nop();
@@ -333,6 +339,7 @@ fn send_command_full(
     );
 
     qspi.ccr.write(|ccr| unsafe {
+	ccr.bits(0);
         ccr.fmode().bits(mode as u8);
         if data.is_some() || mode == QspiMode::MemoryMapped {
             ccr.dmode().bits(op_mode.dmode() as u8);

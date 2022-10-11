@@ -137,7 +137,7 @@ pub fn init_mpu() {
         const DEVICE_SHARED: u32 = 0b000001 << 16;
         const NORMAL_SHARED: u32 = 0b000110 << 16;
 
-        let mpu = &*MPU::ptr();
+        let mpu = &*MPU::PTR;
 
         // Flash
         mpu.rnr.write(0);
