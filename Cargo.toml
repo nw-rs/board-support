@@ -9,8 +9,8 @@ repository = "https://github.com/willemml/rustworks"
 homepage = "https://github.com/willemml/rustworks"
 
 [dependencies]
-cortex-m = "0.7.4"
-rtt-target = { version = "0.3", features = ["cortex-m"] }
+cortex-m = "0.7"
+cortex-m-semihosting = "0.5"
 embedded-hal = "0.2"
 embedded-graphics = "0.7"
 embedded-text = { version = "0.5", default-features = false }
