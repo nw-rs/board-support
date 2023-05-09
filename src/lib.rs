@@ -3,19 +3,22 @@
 use cortex_m::peripheral::MPU;
 use display::Display;
 use hal::{
+    flash::Flash,
     fmc_lcd::{ChipSelect1, LcdPins},
     gpio::{
         gpiob::{PB0, PB4, PB5},
         GpioExt, Output, PushPull,
     },
+    otg_fs::UsbBus,
     pac,
-    rcc::Clocks, otg_fs::UsbBus, flash::Flash, timer::SysTimerExt,
+    rcc::Clocks,
+    timer::SysTimerExt,
 };
 use keypad::{KeyMatrix, KeyPad};
 use led::Led;
 
-pub use stm32f7xx_hal as hal;
 pub use clocks::init_clocks;
+pub use stm32f7xx_hal as hal;
 
 pub mod clocks;
 pub mod display;
@@ -110,7 +113,10 @@ pub fn get_led() -> Led<PB4<Output<PushPull>>, PB5<Output<PushPull>>, PB0<Output
     )
 }
 
-pub fn get_usb_bus_allocator(clocks: &Clocks, ep_memory: &'static mut [u32]) -> UsbBusAllocator<UsbBus<USB>> {
+pub fn get_usb_bus_allocator(
+    clocks: &Clocks,
+    ep_memory: &'static mut [u32],
+) -> UsbBusAllocator<UsbBus<USB>> {
     let dp = unsafe { pac::Peripherals::steal() };
 
     let gpioa = dp.GPIOA.split();
@@ -119,10 +125,7 @@ pub fn get_usb_bus_allocator(clocks: &Clocks, ep_memory: &'static mut [u32]) -> 
         dp.OTG_FS_GLOBAL,
         dp.OTG_FS_DEVICE,
         dp.OTG_FS_PWRCLK,
-        (
-            gpioa.pa11.into_alternate(),
-            gpioa.pa12.into_alternate(),
-        ),
+        (gpioa.pa11.into_alternate(), gpioa.pa12.into_alternate()),
         clocks,
     );
 
@@ -130,6 +133,8 @@ pub fn get_usb_bus_allocator(clocks: &Clocks, ep_memory: &'static mut [u32]) -> 
 }
 
 pub fn init_mpu() {
+    cortex_m::asm::dmb();
+
     unsafe {
         const FULL_ACCESS: u32 = 0b011 << 24;
         const SIZE_512MB: u32 = 28 << 1;
@@ -138,6 +143,8 @@ pub fn init_mpu() {
         const NORMAL_SHARED: u32 = 0b000110 << 16;
 
         let mpu = &*MPU::PTR;
+
+        mpu.ctrl.write(0);
 
         // Flash
         mpu.rnr.write(0);
@@ -172,13 +179,15 @@ pub fn init_mpu() {
         // QSPI
         mpu.rnr.write(6);
         mpu.rbar.write(0x9000_0000);
-        mpu.rasr.write(27 << 1 | 1 << 28 | 1);
+        mpu.rasr.write(27 << 1 | 1 << 28);
 
         mpu.rnr.write(7);
         mpu.rbar.write(0x9000_0000);
-        mpu.rasr.write(FULL_ACCESS | SIZE_8MB | DEVICE_SHARED | 1);
+        mpu.rasr.write(FULL_ACCESS | SIZE_8MB | 1 << 17 | 1);
 
-        // Enable MPU
-        mpu.ctrl.write(1);
+        mpu.ctrl.write(1 | 1 << 2);
     }
+
+    cortex_m::asm::dsb();
+    cortex_m::asm::isb();
 }
