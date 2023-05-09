@@ -135,6 +135,8 @@ pub fn get_usb_bus_allocator(
 }
 
 pub fn init_mpu() {
+    cortex_m::asm::dmb();
+
     unsafe {
         const FULL_ACCESS: u32 = 0b011 << 24;
         const SIZE_512MB: u32 = 28 << 1;
@@ -143,6 +145,8 @@ pub fn init_mpu() {
         const NORMAL_SHARED: u32 = 0b000110 << 16;
 
         let mpu = &*MPU::PTR;
+
+        mpu.ctrl.write(0);
 
         // Flash
         mpu.rnr.write(0);
@@ -177,13 +181,15 @@ pub fn init_mpu() {
         // QSPI
         mpu.rnr.write(6);
         mpu.rbar.write(0x9000_0000);
-        mpu.rasr.write(27 << 1 | 1 << 28 | 1);
+        mpu.rasr.write(27 << 1 | 1 << 28);
 
         mpu.rnr.write(7);
         mpu.rbar.write(0x9000_0000);
-        mpu.rasr.write(FULL_ACCESS | SIZE_8MB | DEVICE_SHARED | 1);
+        mpu.rasr.write(FULL_ACCESS | SIZE_8MB | 1 << 17 | 1);
 
-        // Enable MPU
-        mpu.ctrl.write(1);
+        mpu.ctrl.write(1 | 1 << 2);
     }
+
+    cortex_m::asm::dsb();
+    cortex_m::asm::isb();
 }

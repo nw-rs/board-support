@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
 use cortex_m::asm;
-use cortex_m_semihosting::hprintln;
 use stm32f7xx_hal::pac::{GPIOB, GPIOC, GPIOD, GPIOE};
 use stm32f7xx_hal::{pac::QUADSPI, pac::RCC};
 
@@ -124,12 +123,9 @@ pub enum Command {
 /// Initialize flash chip and QSPI peripheral.
 pub fn init() {
     unsafe {
-        hprintln!("gpio init.");
         init_gpio();
-        hprintln!("qspi init.");
         init_qspi();
     }
-    hprintln!("chip init.");
     init_chip();
 }
 
@@ -249,7 +245,7 @@ fn init_chip() {
     // Turn on the chip.
     send_command(Command::ReleaseDeepPowerDown);
 
-    asm::delay(1000);
+    asm::delay(1000000);
 
     // Enable writing to the chip so that the status register can be changed.
     send_command(Command::WriteEnable);
@@ -279,11 +275,11 @@ fn shutdown_chip() {
     send_command(Command::EnableReset);
     send_command(Command::Reset);
 
-    asm::delay(7000);
+    asm::delay(7000000);
 
     send_command(Command::DeepPowerDown);
 
-    asm::delay(1000);
+    asm::delay(1000000);
 }
 
 fn wait() {
