@@ -1,8 +1,7 @@
 #![allow(dead_code)]
 
 use cortex_m::asm;
-use stm32f7xx_hal::pac::{GPIOB, GPIOC, GPIOD, GPIOE};
-use stm32f7xx_hal::{pac::QUADSPI, pac::RCC};
+use stm32f7::stm32f730::{GPIOB, GPIOC, GPIOD, GPIOE, QUADSPI, RCC};
 
 // 2^23 = 8MB
 const FLASH_ADDRESS_SIZE: u8 = 23;
@@ -242,6 +241,8 @@ unsafe fn shutdown_gpio() {
 }
 
 fn init_chip() {
+    reset();
+    
     // Turn on the chip.
     send_command(Command::ReleaseDeepPowerDown);
 

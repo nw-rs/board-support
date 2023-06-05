@@ -1,8 +1,4 @@
-use fugit::HertzU32;
-use stm32f7xx_hal::rcc::{HSEClock, HSEClockMode, RccExt, PLLP};
-
-use crate::hal::pac::{FLASH, PWR, RCC};
-use crate::hal::rcc::Clocks;
+use stm32f7::stm32f730::{FLASH, PWR, RCC};
 
 pub const HSE: u32 = 8;
 pub const PLL_M: u8 = 8;
@@ -14,7 +10,7 @@ pub const SSCG_MODPER: u16 = 250;
 
 pub const SSCG_INCSTEP: u16 = 25;
 
-pub fn init_clocks(rcc: RCC) -> Clocks {
+pub fn init_clocks() {
     /* System clock
      * Configure the CPU at 192 MHz and USB at 48 MHz. */
 
@@ -24,6 +20,8 @@ pub fn init_clocks(rcc: RCC) -> Clocks {
      * high-speed oscillator (HSE). */
 
     unsafe {
+        let rcc = &*RCC::ptr();
+
         // Enable the HSI and wait for it to be ready
         rcc.cr.modify(|r, w| w.bits(r.bits()).hsion().set_bit());
         while !rcc.cr.read().hsirdy().bit_is_set() {}
@@ -155,20 +153,4 @@ pub fn init_clocks(rcc: RCC) -> Clocks {
 
         rcc.apb2lpenr.reset();
     }
-
-    
-    let rcc_constrained = rcc.constrain();
-    let clocks = rcc_constrained
-        .cfgr
-        .hse(HSEClock::new(HertzU32::MHz(8), HSEClockMode::Oscillator))
-        .use_pll()
-        .pllm(PLL_M)
-        .plln(PLL_N)
-        .pllp(PLLP::Div2)
-        .pllq(PLL_Q)
-        .hclk(HertzU32::Hz(SYSCLK))
-        .sysclk(HertzU32::Hz(SYSCLK))
-        .freeze();
-
-    clocks
 }
