@@ -8,13 +8,24 @@ description = "Board support package for the Numworks n0110 calculator."
 repository = "https://github.com/willemml/rustworks"
 homepage = "https://github.com/willemml/rustworks"
 
-[dependencies]
-cortex-m = "0.7"
-
-[dependencies.stm32f7]
-version = "0.15.1"
-features = ["stm32f730"]
-
 [lib]
 name = "nw_board_support"
 path = "src/lib.rs"
+
+[dependencies]
+cortex-m = "0.7"
+usb-device = {version = "0.2", optional = true }
+usbd-dfu = { version = "0.3", optional = true }
+synopsys-usb-otg = { version = "0.3", features = ["fs", "cortex-m"], optional = true }
+stm32-usbd = { version = "0.6", optional = true }
+num-derive = "0.3.3"
+num-traits = { version = "0.2.15", default-features = false }
+
+[dependencies.stm32f7]
+version = "0.15"
+features = ["stm32f730", "rt"]
+
+[features]
+default = ["dfu"]
+dfu = ["usb", "dep:usbd-dfu"]
+usb = ["dep:stm32-usbd", "dep:usb-device", "dep:synopsys-usb-otg"]

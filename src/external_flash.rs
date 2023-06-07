@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use cortex_m::asm;
-use stm32f7::stm32f730::{GPIOB, GPIOC, GPIOD, GPIOE, QUADSPI, RCC};
+use crate::pac::{GPIOB, GPIOC, GPIOD, GPIOE, QUADSPI, RCC};
 
 // 2^23 = 8MB
 const FLASH_ADDRESS_SIZE: u8 = 23;
@@ -242,7 +242,7 @@ unsafe fn shutdown_gpio() {
 
 fn init_chip() {
     reset();
-    
+
     // Turn on the chip.
     send_command(Command::ReleaseDeepPowerDown);
 
@@ -260,11 +260,6 @@ fn init_chip() {
         [2u8].as_slice(),
         OperatingModes::Modes101,
     );
-
-    wait();
-
-    // Enable QPI on the chip.
-    // send_command(Command::EnableQPI);
 
     wait();
 
@@ -307,15 +302,13 @@ fn send_command_full(
 ) {
     let qspi = unsafe { &(*QUADSPI::PTR) };
 
-    //hprintln!("mode: {:08b}, prev_mode: {:08b}", mode as u8, qspi.ccr.read().fmode().bits());
-
     if mode == QspiMode::MemoryMapped {
-	let previous_mode = qspi.ccr.read().fmode().bits();
+        let previous_mode = qspi.ccr.read().fmode().bits();
 
         if previous_mode == QspiMode::IndirectWrite as u8
             || previous_mode == QspiMode::IndirectRead as u8
         {
-            qspi.ar.write(|w| unsafe { w.bits(0) } );
+            qspi.ar.write(|w| unsafe { w.bits(0) });
             if previous_mode == QspiMode::IndirectRead as u8 {
                 qspi.cr.modify(|_, w| w.abort().set_bit());
                 while qspi.cr.read().abort().bit_is_set() {
@@ -330,13 +323,8 @@ fn send_command_full(
         }
     }
 
-    assert!(
-        qspi.ccr.read().fmode().bits() != QspiMode::MemoryMapped as u8
-            || qspi.sr.read().busy().bit_is_clear()
-    );
-
     qspi.ccr.write(|ccr| unsafe {
-	ccr.bits(0);
+        ccr.bits(0);
         ccr.fmode().bits(mode as u8);
         if data.is_some() || mode == QspiMode::MemoryMapped {
             ccr.dmode().bits(op_mode.dmode() as u8);
@@ -557,6 +545,15 @@ pub fn erase_sector(sector: u8) {
     }
     wait();
     set_memory_mapped();
+}
+
+pub fn erase_memory(addr: u32, len: u32) {
+    let start_sector = sector_at_address(addr);
+    let end_sector = sector_at_address(addr + len);
+
+    for sector in start_sector..=end_sector {
+        erase_sector(sector);
+    }
 }
 
 pub fn write_memory(mut address: u32, source: &[u8]) {
