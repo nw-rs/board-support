@@ -7,7 +7,11 @@ pub mod clocks;
 #[cfg(feature = "dfu")]
 pub mod dfu;
 
+pub mod display;
+
 pub mod external_flash;
+
+pub mod fmc_lcd;
 
 pub mod keypad;
 

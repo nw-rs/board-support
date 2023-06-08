@@ -21,6 +21,17 @@ pub fn init_clocks() {
 
     rcc.cr.modify(|_, w| w.pllon().off());
 
+    rcc.sscgr.write(|w| {
+        w.modper()
+            .bits(250)
+            .incstep()
+            .bits(25)
+            .spreadsel()
+            .center()
+            .sscgen()
+            .set_bit()
+    });
+
     // Configure PLL and set its source to the HSE
     rcc.pllcfgr.modify(|_, w| unsafe {
         w.pllm().bits(4);
@@ -31,7 +42,8 @@ pub fn init_clocks() {
     });
 
     // Enable PWR domain and set correct voltage scaling
-    rcc.apb1enr.modify(|_, w| w.pwren().enabled());
+    rcc.apb1enr
+        .modify(|_, w| w.pwren().enabled().rtcapben().enabled());
     pwr.cr1.modify(|_, w| w.vos().scale1());
 
     // Enable PLL
@@ -49,7 +61,18 @@ pub fn init_clocks() {
     // Enable PLL48CLK
     rcc.dckcfgr2.modify(|_, w| w.ck48msel().pll());
 
-    flash.acr.write(|w| w.latency().bits(0b0111));
+    flash
+        .acr
+        .write(|w| w.latency().ws7().prften().enabled().arten().set_bit());
+
+    rcc.apb2enr.write(|w| {
+        w.adc1en()
+            .set_bit()
+            .syscfgen()
+            .set_bit()
+            .usart6en()
+            .set_bit()
+    });
 
     rcc.cfgr
         .modify(|_, w| w.ppre1().div4().ppre2().div2().hpre().div1());

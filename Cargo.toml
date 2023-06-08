@@ -20,6 +20,12 @@ synopsys-usb-otg = { version = "0.3", features = ["fs", "cortex-m"], optional = 
 stm32-usbd = { version = "0.6", optional = true }
 num-derive = "0.3.3"
 num-traits = { version = "0.2.15", default-features = false }
+display-interface = "0.4.1"
+mipidsi = "0.7.1"
+heapless = "0.7.16"
+embedded-hal = "0.2.7"
+embedded-graphics = "0.8.0"
+embedded-text = "0.6.0"
 
 [dependencies.stm32f7]
 version = "0.15"
