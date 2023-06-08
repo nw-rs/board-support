@@ -2,22 +2,24 @@ pub use usbd_dfu::DFUClass;
 
 use usbd_dfu::DFUMemIO;
 
-use crate::external_flash;
-
 pub struct QspiDfu {
     buffer: [u8; Self::TRANSFER_SIZE as usize],
+    qspi: crate::external_flash::ExternalFlash<crate::external_flash::Indirect>,
 }
 
 impl QspiDfu {
-    pub fn new() -> Self {
+    pub fn new(
+        qspi: crate::external_flash::ExternalFlash<crate::external_flash::Indirect>,
+    ) -> Self {
         QspiDfu {
             buffer: [0; Self::TRANSFER_SIZE as usize],
+            qspi,
         }
     }
 }
 
 impl DFUMemIO for QspiDfu {
-    const INITIAL_ADDRESS_POINTER: u32 = 0x90000000;
+    const INITIAL_ADDRESS_POINTER: u32 = crate::external_flash::FLASH_START;
 
     const MEM_INFO_STRING: &'static str =
         "@ExternalFlash/0x90000000/08*004Kg,01*032Kg,63*064Kg,64*064Kg";
@@ -46,29 +48,29 @@ impl DFUMemIO for QspiDfu {
     }
 
     fn read(&mut self, address: u32, length: usize) -> Result<&[u8], usbd_dfu::DFUMemError> {
-        Ok(unsafe { core::slice::from_raw_parts(address as *const u8, length) })
+        self.qspi.read_bytes(address, &mut self.buffer[0..length]);
+        Ok(&self.buffer[0..length])
     }
 
     fn program(&mut self, address: u32, length: usize) -> Result<(), usbd_dfu::DFUMemError> {
         let slice = &self.buffer.as_slice()[0..length];
 
-        external_flash::write_memory(address, slice);
+        self.qspi.program_page(address, slice);
 
         Ok(())
     }
 
     fn erase(&mut self, address: u32) -> Result<(), usbd_dfu::DFUMemError> {
-        external_flash::erase_sector(external_flash::sector_at_address(address));
+        self.qspi.block_erase_4k(address);
+
         Ok(())
     }
 
     fn erase_all(&mut self) -> Result<(), usbd_dfu::DFUMemError> {
-        external_flash::erase_all();
         Ok(())
     }
 
     fn manifestation(&mut self) -> Result<(), usbd_dfu::DFUManifestationError> {
-        external_flash::shutdown();
-        cortex_m::peripheral::SCB::sys_reset();
+        Ok(())
     }
 }
